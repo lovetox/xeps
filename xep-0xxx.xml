@@ -1,0 +1,141 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE xep SYSTEM 'xep.dtd' [
+  <!ENTITY % ents SYSTEM 'xep.ent'>
+%ents;
+]>
+<?xml-stylesheet type='text/xsl' href='xep.xsl'?>
+<xep>
+<header>
+  <title>User Status</title>
+  <abstract>This specification defines a payload format for communicating information about the status of a user.
+    The payload format is typically transported using the personal eventing protocol, a profile of XMPP publish-subscribe specified in XEP-0163.</abstract>
+  <number>XX</number>
+  <status>XX</status>
+  <type>Standards Track</type>
+  <sig>Standards</sig>
+  <dependencies>
+    <spec>XMPP Core</spec>
+    <spec>XEP-0163</spec>
+  </dependencies>
+  <supersedes/>
+  <supersededby/>
+  <shortname>status</shortname>
+  <schemaloc>
+    <url>http://www.xmpp.org/schemas/status.xsd</url>
+  </schemaloc>
+  <revision>
+    <version>0.1</version>
+    <date>2018-16-03</date>
+    <initials>Initial Version</initials>
+  </revision>
+</header>
+<section1 topic='Introduction' anchor='intro'>
+  <p>This document defines an extension mechanism for capturing "extended presence" data about user status.</p>
+</section1>
+<section1 topic='Protocol' anchor='proto'>
+  <section2 topic='Data Format' anchor='proto-format'>
+    <p>Information about user status is provided by the user and propagated on the network by the user's client. The information is structured via a &lt;status/&gt; element that is qualified by the 'http://jabber.org/protocol/status' namespace. The status itself is provided as in the &lt;text/&gt; child. All described elements are REQUIRED. Here is an example:</p>
+    <code><![CDATA[
+<status xmlns='http://jabber.org/protocol/status'>
+  <text>Away!</text>
+</status>
+]]></code>
+  </section2>
+  <section2 topic='Pubsub Transport' anchor='proto-pubsub'>
+    <p>Status information MUST be communicated and transported by means of the &xep0060; subset specified in &xep0163;.</p>
+    <example caption='User Publishes Status'><![CDATA[
+<iq from='juliet@capulet.lit/balcony'
+    id='publish1'
+    type='set'>
+  <pubsub xmlns='http://jabber.org/protocol/pubsub'>
+    <publish node='http://jabber.org/protocol/status'>
+      <item>
+        <status xmlns='http://jabber.org/protocol/status'>
+          <text>Away!</text>
+        </status>
+      </item>
+    </publish>
+  </pubsub>
+</iq>
+]]></example>
+    <p>The status is then delivered to all subscribers:</p>
+    <example caption='Status is Delivered to All Subscribers'><![CDATA[
+<message
+    from='juliet@capulet.lit'
+    to='romeo@montague.net'>
+  <event xmlns='http://jabber.org/protocol/pubsub#event'>
+    <items node='http://jabber.org/protocol/status'>
+      <item id='a475804a-0f9c-11dc-98a8-001143d5d5db'>
+        <status xmlns='http://jabber.org/protocol/status'>
+          <text>Away!</text>
+        </status>
+      </item>
+    </items>
+  </event>
+</message>
+]]></example>
+    <p>In order to indicate that the user is no longer publishing a status, the user's client shall send an empty &lt;status/&gt; element.</p>
+    <example caption='User Disables Publishing'><![CDATA[
+<iq from='juliet@capulet.lit/balcony'
+    id='publish1'
+    type='set'>
+  <pubsub xmlns='http://jabber.org/protocol/pubsub'>
+    <publish node='http://jabber.org/protocol/status'>
+      <item>
+        <status xmlns='http://jabber.org/protocol/status'/>
+      </item>
+    </publish>
+  </pubsub>
+</iq>
+]]></example>
+    <example caption='Empty Status Information is Delivered to All Subscribers'><![CDATA[
+<message
+    from='juliet@capulet.lit'
+    to='romeo@montague.net'>
+  <event xmlns='http://jabber.org/protocol/pubsub#event'>
+    <items node='http://jabber.org/protocol/status'>
+      <item id='a475804a-0f9c-11dc-98a8-001143d5d5db'>
+        <status xmlns='http://jabber.org/protocol/status'/>
+      </item>
+    </items>
+  </event>
+</message>
+]]></example>
+  </section2>
+</section1>
+<section1 topic='Internationalization Considerations' anchor='i18n'>
+  <p>TODO</p>
+</section1>
+<section1 topic='Security Considerations' anchor='security'>
+  <p>Because user status may be published to a large number of pubsub subscribers, users should take care in approving subscribers and in characterizing their current status.</p>
+</section1>
+<section1 topic='IANA Considerations' anchor='iana'>
+  <p>TODO</p>
+</section1>
+<section1 topic='XMPP Registrar Considerations' anchor='registrar'>
+  <section2 topic='Protocol Namespaces' anchor='registrar-ns'>
+    <p>The &REGISTRAR; includes 'http://jabber.org/protocol/status' in its registry of protocol namespaces.</p>
+  </section2>
+</section1>
+<section1 topic='XML Schema' anchor='schema'>
+  <code><![CDATA[
+<?xml version='1.0' encoding='UTF-8'?>
+
+<xs:schema
+    xmlns:xs='http://www.w3.org/2001/XMLSchema'
+    targetNamespace='http://jabber.org/protocol/status'
+    xmlns='http://jabber.org/protocol/status'
+    elementFormDefault='qualified'>
+
+  <xs:element name='status'>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name='text' minOccurs='1' type='xs:string'/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>
+]]></code>
+</section1>
+</xep>
