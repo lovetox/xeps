@@ -13,7 +13,6 @@
   <status>Draft</status>
   <type>Standards Track</type>
   <sig>Standards</sig>
-  <approver>Council</approver>
   <dependencies>
     <spec>XMPP Core</spec>
   </dependencies>
@@ -94,8 +93,8 @@
   <p>This document defines two XMPP protocol extensions for communicating URIs between Jabber entities, where the data formats are qualified by the 'jabber:iq:oob' and 'jabber:x:oob' namespaces. Although these mechanisms were originally used for out-of-band (OOB) data transfer, they are also used more generally to exchange or communicate URIs.</p>
 </section1>
 <section1 topic='jabber:iq:oob' anchor='iq-oob'>
-  <p>The intent of the 'jabber:iq:oob' was to provide a "least common denominator" mechanism for basic file transfers. Although &xep0096; defines a more generic method for communicating file exchange options, the 'jabber:iq:oob' namespace can be included as one option therein since it provides a fallback mechanism when clients do not support file transfer options such as those defined in &xep0065; and &xep0047;.</p>
-  <p>To initiate an out-of-band file transfer with an intended recipient using the 'jabber:iq:oob' namespace (whether or not negotiated via &xep0096;), the sending application sends an &IQ; of type 'set' to the recipient containing a &QUERY; child element qualified by the 'jabber:iq:oob' namespace; the &QUERY; MUST in turn contain a &lt;url/&gt; child specifying the URL of the file to be transferred, and MAY contain an optional &lt;desc/&gt; child describing the file. This usage is shown in the following example.</p>
+  <p>The intent of the 'jabber:iq:oob' was to provide a "least common denominator" mechanism for basic file transfers.</p>
+  <p>To initiate an out-of-band file transfer with an intended recipient using the 'jabber:iq:oob' namespace, the sending application sends an &IQ; of type 'set' to the recipient containing a &QUERY; child element qualified by the 'jabber:iq:oob' namespace; the &QUERY; MUST in turn contain a &lt;url/&gt; child specifying the URL of the file to be transferred, and MAY contain an optional &lt;desc/&gt; child describing the file. This usage is shown in the following example.</p>
     <example caption="Sender Initiates Request-Response"><![CDATA[
 <iq type='set'
     from='stpeter@jabber.org/work'
@@ -184,6 +183,9 @@
 <section1 topic='Use With Non-HTTP URI Schemes' anchor='nonhttp'>
   <p>The value of the &lt;url/&gt; element is not limited to URIs that conform to the http: URI scheme (as specified by &rfc2616;). For example, file transfers could also be effected using ftp: URIs as (specified by &rfc0959;). Going further afield, several existing Jabber clients use the callto: URI scheme to initiate voice conferencing via NetMeeting or GnomeMeeting. Other out-of-band communications could be initiated in a similar way via URI schemes such as sip: (as specified by &rfc3261;). All of these usages are allowed by the existing OOB namespaces, as long as the value of the &lt;url/&gt; element is a valid URI (as specified by &rfc3986;).</p>
 </section1>
+<section1 topic='Integration With Stream Initiation (retracted)' anchor='si'>
+  <p><note>Up to and including revision 1.5 of this XEP, this section defined a non-normative integration with Stream Initiation, itself deprecated. To retain section numbering, this text remains as a placeholder.</note></p>
+</section1>
 <section1 topic='Security Considerations' anchor='security'>
   <p>As with any mechanism that communicates a URI, care must be taken by the receiving application to ensure that the resource retrieved does not contain harmful or malicious data (e.g., a virus-infected file).</p>
 </section1>
@@ -218,6 +220,10 @@
         <xs:element name='desc' type='xs:string' minOccurs='0'/>
       </xs:sequence>
       <xs:attribute name='sid' type='xs:string' use='optional'/>
+      <!--
+          Note that the sid attribute is a remnant of the retracted
+          Session Initiation integration, and therefore always unused
+       -->
     </xs:complexType>
   </xs:element>
 
