@@ -30,6 +30,12 @@
   </schemaloc>
   &stpeter;
   <revision>
+    <version>1.6</version>
+    <date>2026-07-08</date>
+    <initials>dwd</initials>
+    <remark><p>Twenty years later, strike section 6's SI suggestion</p></remark>
+  </revision>
+  <revision>
     <version>1.5</version>
     <date>2006-08-16</date>
     <initials>psa</initials>
@@ -177,74 +183,6 @@
 </section1>
 <section1 topic='Use With Non-HTTP URI Schemes' anchor='nonhttp'>
   <p>The value of the &lt;url/&gt; element is not limited to URIs that conform to the http: URI scheme (as specified by &rfc2616;). For example, file transfers could also be effected using ftp: URIs as (specified by &rfc0959;). Going further afield, several existing Jabber clients use the callto: URI scheme to initiate voice conferencing via NetMeeting or GnomeMeeting. Other out-of-band communications could be initiated in a similar way via URI schemes such as sip: (as specified by &rfc3261;). All of these usages are allowed by the existing OOB namespaces, as long as the value of the &lt;url/&gt; element is a valid URI (as specified by &rfc3986;).</p>
-</section1>
-<section1 topic='Integration With Stream Initiation' anchor='si'>
-  <p><em>This section is non-normative.</em></p>
-  <p>&xep0095; defines methods for negotiating content streams between any two entities, and XEP-0096 defines a profile of stream initiation for file transfer. Although the use of jabber:iq:oob is not recommended by XEP-0096, it could be offered as one option (e.g., a fallback if SOCKS5 Bytestreams and In-Band Bytestreams are not available). If so, the value of the feature negotiation option MUST be "jabber:iq:oob" and the &QUERY; element within the &IQ; stanza qualified by the 'jabber:iq:oob' namespace MUST possess a 'sid' attribute whose value is the StreamID negotiated by stream initiation.</p>
-  <p>A sample protocol flow is shown below.</p>
-  <example caption='Stream Initiation Offer'>
-    <![CDATA[
-<iq type='set'
-    from='romeo@montague.net/orchard'
-    to='juliet@capulet.com/chamber'
-    id='offer1'>
-  <si xmlns='http://jabber.org/protocol/si'
-      id='a0'
-      mime-type='text/plain'
-      profile='http://jabber.org/protocol/si/profile/file-transfer'>
-    <file xmlns='http://jabber.org/protocol/si/profile/file-transfer'
-          name='test.txt'
-          size='1022'/>
-    <feature xmlns='http://jabber.org/protocol/feature-neg'>
-      <x xmlns='jabber:x:data' type='form'>
-        <field var='stream-method' type='list-single'>
-          <option><value>http://jabber.org/protocol/bytestreams</value></option>
-          <option><value>http://jabber.org/protocol/ibb</value></option>
-          <option><value>jabber:iq:oob</value></option>
-        </field>
-      </x>
-    </feature>
-  </si>
-</iq>
-]]>
-  </example>
-  <example caption='Stream Initiation Result'>
-    <![CDATA[
-<iq type='result'
-    from='juliet@capulet.com/chamber'>
-    to='romeo@montague.net/orchard'
-    id='offer1'>
-  <si xmlns='http://jabber.org/protocol/si'
-      id='a0'
-      profile='http://jabber.org/protocol/si/profile/file-transfer'>
-    <feature xmlns='http://jabber.org/protocol/feature-neg'>
-      <x xmlns='jabber:x:data' type='submit'>
-        <field var='stream-method'>
-          <value>jabber:iq:oob</value>
-        </field>
-      </x>
-    </feature>
-  </si>
-</iq>
-]]>
-  </example>
-  <example caption="Sender Initiates Request-Response"><![CDATA[
-<iq type='set'
-    from='romeo@montague.net/orchard'
-    to='juliet@capulet.com/chamber'>
-    id='send1'>
-  <query xmlns='jabber:iq:oob'
-         sid='a0'>
-    <url>http://www.shakespeare.lit/files/letter.txt</url>
-  </query>
-</iq>
-]]></example>
-  <example caption="Recipient Informs Sender of Success"><![CDATA[
-<iq type='result'
-    from='juliet@capulet.com/chamber'
-    to='romeo@montague.net/orchard'
-    id='send1'/>
-]]></example>
 </section1>
 <section1 topic='Security Considerations' anchor='security'>
   <p>As with any mechanism that communicates a URI, care must be taken by the receiving application to ensure that the resource retrieved does not contain harmful or malicious data (e.g., a virus-infected file).</p>
