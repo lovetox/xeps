@@ -68,22 +68,25 @@
 
   <p>Protocols such as &xep0060; already acknowledge that services may require payment for operations (e.g., node subscriptions or item retrieval) but leave the payment mechanism out-of-band. This specification provides the in-band protocol to fulfill that need.</p>
 
-  <p>The design is informed by analogous protocols in the HTTP ecosystem: the long-reserved HTTP 402 Payment Required status code; the L402 protocol published by Lightning Labs, in which a client receives a <tt>WWW-Authenticate</tt> header containing a macaroon token and a Lightning invoice and presents a token-preimage credential after payment; and the x402 protocol published by Coinbase et al., in which a client receives an HTTP 402 response with a <tt>PAYMENT-REQUIRED</tt> header listing accepted payment schemes and retries with a <tt>PAYMENT-SIGNATURE</tt> header; and the Machine Payments Protocol (MPP) published by Stripe and Tempo, an IETF-tracked open standard for machine-to-machine payments that similarly uses HTTP 402 challenges with multi-method selection, machine-readable error codes, payment receipts, and cryptographic challenge binding.
+  <p>The design is informed by analogous protocols in the HTTP ecosystem: the long-reserved HTTP 402 Payment Required status code; the L402 protocol published by Lightning Labs, in which a client receives a <tt>WWW-Authenticate</tt> header containing a macaroon token and a Lightning invoice and presents a token-preimage credential after payment; the x402 protocol published by Coinbase et al., in which a client receives an HTTP 402 response with a <tt>PAYMENT-REQUIRED</tt> header listing accepted payment schemes and retries with a <tt>PAYMENT-SIGNATURE</tt> header; and the Machine Payments Protocol (MPP) published by Stripe and Tempo, an IETF-tracked open standard for machine-to-machine payments that similarly uses HTTP 402 challenges with multi-method selection, machine-readable error codes, payment receipts, and cryptographic challenge binding.
   </p>
 
   <p>The conceptual parallels shared by all four are:</p>
   <ol>
-    <li>a service declines a request and presents payment instructions in-band;</li>
-    <li>the client completes payment and retries, optionally supplying a proof-of-payment token;</li>
-    <li>multiple simultaneously valid payment options MAY be presented so that the client can choose the most suitable scheme.</li>
+    <li>a service declines a request and presents payment instructions in-band</li>
+    <li>the client completes payment and retries, optionally supplying a proof-of-payment token</li>
+    <li>multiple simultaneously valid payment options MAY be presented so that the client can choose the most suitable scheme</li>
   </ol>
 
   <p>This specification is payment-system agnostic. A service MAY require payment exclusively via bank transfer, distributed ledger,
     instant-settlement network, or any combination thereof. No payment system is privileged over any other at the protocol level.
-    Crucially, this specification does not enumerate or curate payment systems itself: each payment option is
-    expressed as a payment URI, and the payment system is identified by that URI's scheme (registered in the IANA URI Schemes registry,
-    and, for the <tt>payto</tt> scheme, the payment target types maintained externally per RFC 8905). Adding support for a new
-    payment network therefore requires no change to this document.</p>
+    This specification also does not enumerate or curate payment systems. Each payment option is expressed as a payment URI,
+    and the payment system is identified by that URI's scheme. Adding support for a new payment network therefore requires no change
+    to this document.</p>
+  <p>
+    The payment URI SHOULD be registered in the IANA URI Schemes registry, but there are URIs widely used by wallet and payment software
+    that are not yet registered, such the <tt>lightning:</tt> URI scheme, documented in the Lightning Network specifications (BOLT #11).
+    For the <tt>payto:</tt> scheme, which is IANA registered, the payment target types are maintained externally per RFC 8905.</p>
 </section1>
 
 <section1 topic='Requirements' anchor='reqs'>
@@ -91,9 +94,9 @@
   <ul>
     <li>A service MUST be able to decline a stanza and return structured payment instructions using a standard XMPP error stanza.</li>
     <li>The payment instructions MUST support multiple concurrent payment options, each carrying sufficient information for fully automated processing as well as human-readable presentation.</li>
-    <li>Each payment option MUST be expressed as a payment URI, identified by its URI scheme, so that the specification need not maintain its own registry of payment systems. The <tt>payto</tt> URI scheme (RFC 8905) is RECOMMENDED as the primary scheme because it covers traditional bank accounts (IBAN/SEPA, UPI, etc.) and cryptocurrency addresses within a single, payment-system-neutral standard.</li>
+    <li>Each payment option MUST be expressed as a payment URI, identified by its URI scheme, so that the specification need not maintain its own registry of payment systems.</li>
     <li>A client MUST be able to support this protocol without parsing scheme-specific payment URIs and therefore MAY treat a payment URI as an opaque string to be handed over to a payment application (or rendered as a QR code).</li>
-    <li>A payment option MAY additionally carry a pre-formatted QR payload for payment systems whose scannable QR format differs from the URI; clients SHOULD render it as a QR code without interpreting it.</li>
+    <li>A payment option MAY additionally carry a pre-formatted QR payload for payment systems whose scannable QR format differs from the URI. Clients SHOULD render it as a QR code without interpreting it.</li>
     <li>Proof-of-payment tokens MUST be expressible in-band so that a client can retry a declined stanza with evidence of payment.</li>
     <li>The protocol MUST integrate gracefully with the existing &xep0158; challenge mechanism.</li>
     <li>The protocol MUST be usable at the stanza level independently of the application layer (MUC, file upload, message routing, etc.)
@@ -135,7 +138,7 @@
 
   <section2 topic='Paid MUC Room Entry with Multiple Payment Options' anchor='usecase-muc'>
   <p>Juliet operates a premium conference room on <tt>conference.shakespeare.lit</tt> that charges an entry fee.
-  Romeo attempts to join but is declined and presented with invoice options spanning both traditional banking and an instant-settlement network.</p>
+  Romeo attempts to join but is declined and presented with multiple invoice options.</p>
     <example caption="Romeo attempts to join a paid MUC room"><![CDATA[
 <presence from='romeo@shakespeare.lit/orchard'
           to='upperroom@conference.shakespeare.lit/Romeo'>
@@ -171,7 +174,6 @@ Capulet Hosting
 DE02200400300200270112
 EUR5.00
 
-
 upperroom-c4a1f902</qr>
       </option>
       <option label='UPI'
@@ -184,6 +186,7 @@ upperroom-c4a1f902</qr>
   </error>
 </presence>
 ]]></example>
+
     <example caption="Romeo retries after paying by SEPA bank transfer"><![CDATA[
 <presence from='romeo@shakespeare.lit/orchard'
           to='upperroom@conference.shakespeare.lit/Romeo'>
@@ -194,20 +197,12 @@ upperroom-c4a1f902</qr>
   </payment>
 </presence>
 ]]></example>
-    <example caption="Romeo alternatively retries after paying via Lightning"><![CDATA[
-<presence from='romeo@shakespeare.lit/orchard'
-          to='upperroom@conference.shakespeare.lit/Romeo'>
-  <x xmlns='http://jabber.org/protocol/muc'/>
-  <payment session='c4a1f902-7d3b-4e8c-a510-2f9b0e6d3178'
-           xmlns='urn:xmpp:payment:0'>
-    <proof type='preimage'>a8f3e1d2b4c9078564fae012cc3d99a1b5e7d0f3a2c81496057832bd7e4f0c1a</proof>
-  </payment>
-</presence>
-]]></example>
+
   <p>Because SEPA bank transfers may take time to settle, the service SHOULD set a generous session expiry for bank-transfer
   options and MAY grant access provisionally upon receiving the retry stanza, subsequently revoking it if reconciliation fails.
   Alternatively, where the service has detected the payment but has not yet confirmed settlement, it MAY ask the payer to wait
   and retry later (see <link url='#protocol-error-flow'>Error Flow</link>).</p>
+
     <example caption="The service has seen the transfer but awaits settlement, asking Romeo to retry later"><![CDATA[
 <presence from='upperroom@conference.shakespeare.lit'
           to='romeo@shakespeare.lit/orchard'
@@ -263,6 +258,7 @@ upperroom-c4a1f902</qr>
   </error>
 </message>
 ]]></example>
+
     <example caption="Romeo retries after paying via Lightning"><![CDATA[
 <message from='romeo@shakespeare.lit/orchard'
          id='msg-002'
@@ -275,6 +271,7 @@ upperroom-c4a1f902</qr>
   </payment>
 </message>
 ]]></example>
+
     <example caption="The bot fulfills the request and returns a payment receipt"><![CDATA[
 <message from='newssummary@bots.shakespeare.lit'
          id='msg-003'
@@ -290,7 +287,8 @@ upperroom-c4a1f902</qr>
   </section2>
 
   <section2 topic='Anti-Spam Deposit for Non-Roster Contacts' anchor='usecase-antispam'>
-  <p>Juliet's server requires a small deposit from senders not present in her roster, as a proof-of-intent mechanism to deter unsolicited messages. Instant-settlement options are used because slow bank transfers would allow queuing before verification.</p>
+    <p>Juliet's server requires a small deposit from senders not present in her roster, as a proof-of-intent mechanism to deter unsolicited messages.
+      Instant-settlement options are used because slow bank transfers would allow queuing before verification.</p>
     <example caption="An unknown sender is declined pending a deposit"><![CDATA[
 <message from='juliet@shakespeare.lit'
          id='spam-001'
@@ -318,7 +316,10 @@ upperroom-c4a1f902</qr>
   </section2>
 
   <section2 topic='Proactive Invoice Request' anchor='usecase-proactive'>
-  <p>A client MAY proactively request an invoice from a service before sending the gated stanza. This is useful when the client wishes to present payment options to the user before committing to an action. Before sending a proactive invoice request, the client SHOULD discover whether the service supports this feature by querying for the 'urn:xmpp:payment:0#invoice-request' feature via &xep0030;.</p>
+    <p>A client MAY proactively request an invoice from a service before sending the gated stanza.
+      This is useful when the client wishes to present payment options to the user before committing to an action.
+      Before sending a proactive invoice request, the client SHOULD discover whether the service supports this
+      feature by querying for the 'urn:xmpp:payment:0#invoice-request' feature via &xep0030;.</p>
     <example caption="Romeo requests an invoice before attempting to join"><![CDATA[
 <iq from='romeo@shakespeare.lit/orchard'
     id='inv-001'
@@ -407,7 +408,7 @@ upperroom-c4a1f902</qr>
 
     <section3 topic='The invoice Element' anchor='protocol-invoice'>
       <p>The <tt>&lt;invoice/&gt;</tt> element is the container for all payment options associated with a single payment event. It MUST contain at least one <tt>&lt;option/&gt;</tt> child element and MAY contain a <tt>&lt;description/&gt;</tt> child element whose character data provides additional human-readable context.</p>
-      <p>The <tt>&lt;invoice/&gt;</tt> element possesses the following attributes:</p>
+      <p>The <tt>&lt;invoice/&gt;</tt> element has the following attributes:</p>
       <ul>
         <li><tt>session</tt> (REQUIRED) — An opaque, service-generated string that MUST be globally unique and MUST be included verbatim in the 'session' attribute of the corresponding <tt>&lt;payment/&gt;</tt> element. How the service generates this value is an implementation choice; <link url='#security-session-binding'>Session Binding</link> describes two strategies (a random identifier such as a UUID version 4 per RFC 4122 with server-side state, or a stateless keyed token derived from the invoice parameters). Where a bank transfer option is present, the session value also serves as the RECOMMENDED payment reference that the payer SHOULD include in the transfer.</li>
         <li><tt>expires</tt> (RECOMMENDED) — A UTC date-time value, formatted per &xep0082;, after which the invoice MUST NOT be honored. The payer SHOULD NOT attempt payment after this time.</li>
@@ -417,22 +418,22 @@ upperroom-c4a1f902</qr>
 
     <section3 topic='The option Element' anchor='protocol-option'>
       <p>Each <tt>&lt;option/&gt;</tt> element describes one complete, self-contained payment method. The payer MUST use exactly one option to fulfill the invoice.</p>
-      <p>The character data of the <tt>&lt;option/&gt;</tt> element MUST be a <strong>payment URI</strong>. The payment system is identified by the URI's scheme (e.g. <tt>payto:</tt> per RFC 8905, or <tt>lightning:</tt> for a Lightning Network invoice or offer), and the amount, currency, and beneficiary are carried within the URI as defined by that scheme's own standard. This specification neither defines nor curates the set of usable schemes; any scheme registered in the IANA URI Schemes registry MAY be used. The <tt>payto</tt> URI scheme (RFC 8905) is RECOMMENDED as the primary scheme.</p>
+      <p>The character data of the <tt>&lt;option/&gt;</tt> element MUST be a <strong>payment URI</strong>. The payment system is identified by the URI's scheme (e.g. <tt>payto:</tt> per RFC 8905), and the amount, currency, and beneficiary are carried within the URI as defined by that scheme's own standard. This specification neither defines nor curates the set of usable schemes. The <tt>payto</tt> URI scheme (RFC 8905) is RECOMMENDED as the primary scheme.</p>
       <p>A client is NOT required to parse the payment URI. It MAY treat the URI as an opaque string to be handed to an external payment application or rendered as a QR code; see <link url='#security-amount'>Amount Presentation Integrity</link>.</p>
       <p>The <tt>&lt;option/&gt;</tt> element possesses the following attributes:</p>
       <ul>
         <li><tt>proof</tt> (OPTIONAL) — The type of proof-of-payment the service expects the payer to echo on retry (see <link url='#protocol-payment'>The payment Element</link>). The issuer declares this value and the payer returns it verbatim in the 'type' attribute of the <tt>&lt;proof/&gt;</tt> element. Its absence means the service verifies payment out of band and requires no payer-supplied proof. The value's meaning is defined by the payment system the option uses; <link url='#proof-types'>Conventional Proof Types</link> lists common values non-normatively.</li>
         <li><tt>label</tt> (OPTIONAL) — A short human-readable string for display in a list (e.g., "Bank transfer (SEPA)", "UPI", "Lightning").</li>
       </ul>
-      <p>This specification does not define a separate human-readable amount field. The amount is carried in the payment URI: a client that parses the option's scheme reads it from there for display, while one that does not delegates the URI to a payment application that displays it (see <link url='#security-amount'>Amount Presentation Integrity</link>). A duplicate amount supplied alongside the URI would be redundant in the first case and unverifiable in the second. The amount is readily extracted from common schemes (<tt>payto</tt> from its <tt>amount=currency:value</tt> parameter, <tt>bitcoin:</tt> from its decimal <tt>amount</tt>, a <tt>lightning:</tt> BOLT 11 invoice from its prefix); for less common schemes, and where no amount is encoded at all (such as a zero-amount Lightning invoice), the payer's payment application presents the amount it is about to send for confirmation.</p>
-      <p>The <tt>&lt;option/&gt;</tt> element MAY also contain a <tt>&lt;qr/&gt;</tt> child element whose character data is a payment string to be rendered as a QR code. This is useful where the payment URI is not itself the QR payload that the payer's payment application expects to scan, for example, a SEPA credit transfer for which banking apps scan a European Payments Council (EPC069-12) payload rather than a <tt>payto</tt> URI. A client renders the <tt>&lt;qr/&gt;</tt> content as a QR code <em>without interpreting it</em>, exactly as it would QR-encode the URI, so no scheme-specific parsing is required. This specification does not define or constrain the format of the <tt>&lt;qr/&gt;</tt> payload; that is a matter between the service and the scanning payment application. Because a payment URI is always present, the <tt>&lt;qr/&gt;</tt> element is purely an additional rendering convenience: it is not authoritative and is subject to the same integrity considerations as other invoice content (see <link url='#security-amount'>Amount Presentation Integrity</link>). Clients SHOULD also present the underlying URI as selectable text for accessibility.</p>
+      <p>This specification does not define a separate human-readable amount field. The amount is carried in the payment URI. A client that parses the option's scheme reads it from there for display, while one that does not delegates the URI to a payment application that displays it (see <link url='#security-amount'>Amount Presentation Integrity</link>). A duplicate amount supplied alongside the URI would be redundant in the first case and unverifiable in the second. The amount is readily extracted from common schemes (<tt>payto</tt> from its <tt>amount=currency:value</tt> parameter, <tt>bitcoin:</tt> from its decimal <tt>amount</tt>, a <tt>lightning:</tt> BOLT 11 invoice from its prefix). For less common schemes, and where no amount is encoded at all (such as a zero-amount Lightning invoice), the payer's payment application presents the amount it is about to send for confirmation.</p>
+      <p>The <tt>&lt;option/&gt;</tt> element MAY also contain a <tt>&lt;qr/&gt;</tt> child element whose character data is a payment string to be rendered as a QR code. This is useful where the payment URI is not itself the QR payload that the payer's payment application expects to scan, for example, a SEPA credit transfer for which banking apps scan a European Payments Council (EPC069-12) payload rather than a <tt>payto</tt> URI. A client renders the <tt>&lt;qr/&gt;</tt> content as a QR code <em>without interpreting it</em>, exactly as it would QR-encode the URI, so no scheme-specific parsing is required. This specification does not define or constrain the format of the <tt>&lt;qr/&gt;</tt> payload; that is a matter between the service and the scanning payment application. Because a payment URI is always present, the <tt>&lt;qr/&gt;</tt> element is purely an additional rendering and payment convenience and is subject to the same integrity considerations as other invoice content (see <link url='#security-amount'>Amount Presentation Integrity</link>). Clients SHOULD also present the underlying URI as selectable or copyable text for accessibility.</p>
     </section3>
 
     <section3 topic='The payment Element' anchor='protocol-payment'>
       <p>The <tt>&lt;payment/&gt;</tt> element is added by the payer as an extension to the retried stanza to indicate that a payment has been made for the referenced session.</p>
       <p>The <tt>&lt;payment/&gt;</tt> element possesses a single attribute:</p>
       <ul>
-        <li><tt>session</tt> (REQUIRED) — The value of the 'session' attribute from the <tt>&lt;invoice/&gt;</tt> element that this payment satisfies. The session is the sole correlator the service needs: because the service issued the invoice for that session, it already knows which option(s) and payment system(s) were offered.</li>
+        <li><tt>session</tt> (REQUIRED) — The value of the 'session' attribute from the <tt>&lt;invoice/&gt;</tt> element that this payment satisfies. The session is the sole correlator the service needs. Because the service issued the invoice for that session, it already knows which option(s) and payment system(s) were offered.</li>
       </ul>
       <p>The <tt>&lt;payment/&gt;</tt> element MAY contain a <tt>&lt;proof/&gt;</tt> child element. The <tt>&lt;proof/&gt;</tt> element possesses a required 'type' attribute and its character data is the proof token. Where the satisfied option carried a 'proof' attribute, the payer SHOULD set 'type' to that declared value. The proof token is opaque to XMPP; its syntax and verification are defined by the payment system the option uses, not by this specification.</p>
       <section4 topic='Conventional Proof Types' anchor='proof-types'>
@@ -467,10 +468,13 @@ upperroom-c4a1f902</qr>
     </section3>
 
     <section3 topic='The payment-required Element' anchor='protocol-payment-required'>
-      <p>The <tt>&lt;payment-required/&gt;</tt> element is an application-specific stanza error condition. It is used as a child of the <tt>&lt;error/&gt;</tt> element to indicate that the requested action requires payment before it can be fulfilled.</p>
+      <p>The <tt>&lt;payment-required/&gt;</tt> element is an application-specific stanza error condition.
+        It is used as a child of the <tt>&lt;error/&gt;</tt> element to indicate that the requested action requires payment before it can be fulfilled.</p>
+
       <p>The <tt>&lt;payment-required/&gt;</tt> element possesses the following OPTIONAL attributes:</p>
       <ul>
-        <li><tt>reason</tt> (OPTIONAL) — A machine-readable code providing additional detail. This is intended for use in error responses to retried stanzas (i.e., where a <tt>&lt;payment/&gt;</tt> was present), not in the initial decline. Defined values are:</li>
+        <li><tt>reason</tt> (OPTIONAL) — A machine-readable code providing additional detail. This is intended for use in error responses to retried stanzas
+          (i.e., where a <tt>&lt;payment/&gt;</tt> was present), not in the initial decline. Defined values are:</li>
       </ul>
       <table caption='Registered reason Codes'>
         <tr>
@@ -499,20 +503,27 @@ upperroom-c4a1f902</qr>
         </tr>
         <tr>
           <td>payment-pending</td>
-          <td>A payment has been detected for the referenced session but has not yet been confirmed as settled. The payer should wait and retry. This is not a failure; it is paired with stanza error type "wait" and SHOULD be accompanied by a 'retry-after' attribute (see <link url='#protocol-error-flow'>Error Flow</link>).</td>
+          <td>A payment has been detected for the referenced session but has not yet been confirmed as settled. The payer should wait and retry.
+            This is not a failure and is therefore paired with stanza error type "wait" and SHOULD be accompanied by a 'retry-after' attribute (see <link url='#protocol-error-flow'>Error Flow</link>).</td>
         </tr>
       </table>
-      <p>The <tt>&lt;payment-required/&gt;</tt> element additionally possesses an OPTIONAL <tt>retry-after</tt> attribute: a non-negative integer number of seconds the payer SHOULD wait before retrying the same session. It is meaningful with the 'payment-pending' reason (and MAY accompany any transient condition returned with stanza error type "wait").</p>
+
+        <p>The <tt>&lt;payment-required/&gt;</tt> element additionally possesses an OPTIONAL <tt>retry-after</tt> attribute.
+          If it exists, it MUST be set to a non-negative integer number of seconds the payer SHOULD wait before retrying the same session.
+          It is meaningful with the 'payment-pending' reason (and MAY accompany any transient condition returned with stanza error type "wait").</p>
     </section3>
 
     <section3 topic='The receipt Element' anchor='protocol-receipt'>
-      <p>The <tt>&lt;receipt/&gt;</tt> element MAY be included by a service in the successful response to a retried stanza to provide the payer with a machine-readable record of the settled payment. It is an OPTIONAL protocol element; its absence does not indicate that payment failed.</p>
-      <p>The <tt>&lt;receipt/&gt;</tt> element possesses the following attributes:</p>
+      <p>The <tt>&lt;receipt/&gt;</tt> element MAY be included by a service in the successful response to a retried stanza to provide the payer with a machine-readable record of the settled payment.
+        It is an OPTIONAL protocol element and its absence does not indicate that the payment failed.</p>
+
+      <p>The <tt>&lt;receipt/&gt;</tt> element has the following attributes:</p>
       <ul>
         <li><tt>session</tt> (REQUIRED) — The session identifier from the <tt>&lt;invoice/&gt;</tt> that was satisfied, allowing the payer to correlate the receipt with the original invoice.</li>
         <li><tt>reference</tt> (RECOMMENDED) — A payment-network reference that can be used for auditing and dispute resolution. For Lightning Network payments this is, for example, the payment hash; for bank transfers, the end-to-end identifier provided by the receiving bank; for distributed ledger payments, the transaction identifier.</li>
         <li><tt>settled</tt> (OPTIONAL) — A UTC date-time value, formatted per &xep0082;, indicating when the payment was confirmed as settled. For asynchronous settlement methods (e.g., bank transfers) this MAY be omitted if settlement has not yet been confirmed.</li>
       </ul>
+
       <p>A service that supports emitting receipts SHOULD advertise the feature 'urn:xmpp:payment:0#receipt' via &xep0030;.</p>
     </section3>
 
@@ -575,14 +586,23 @@ upperroom-c4a1f902</qr>
     <li><tt>payto://upi/merchant@examplebank?amount=INR:200&amp;receiver-name=Example</tt> (India UPI)</li>
     <li><tt>payto://ach/122000661/0000000123?amount=USD:200.00</tt> (US ACH transfer)</li>
   </ul>
-  <p>Because each option carries a payment URI, any payment system reachable through a registered URI scheme is usable without modifying this specification. Cryptocurrency networks are addressed through their own native schemes rather than through a <tt>payto</tt> target type because typically the native scheme is the form the payer's wallet recognises (see <link url='#protocol-option'>The option Element</link>).</p>
-  <p>A QR code is normally generated directly from the payment URI: the client renders the URI string as a QR code without interpreting it, and the payer scans it with a wallet or banking application. This works natively for cryptocurrency URI schemes. For some bank-transfer systems, however, the payment application expects a different QR payload (for example, banking apps in several European countries scan a European Payments Council EPC069-12 payload rather than a <tt>payto</tt> URI). In that case the service MAY additionally supply that payload in the <tt>&lt;qr/&gt;</tt> child of the option, which the client likewise renders as a QR code without interpreting it. The payment URI itself remains REQUIRED, so a machine-readable, scheme-identified payment instruction is always present.</p>
-  <p>When generating Lightning Network invoices for inclusion in an <tt>&lt;option/&gt;</tt> element, the service SHOULD encode the payment hash in a way that allows stateless preimage verification (see <link url='#protocol-verification'>Verification</link>), avoiding the need to query the Lightning node on every retry.</p>
+  <p>Because each option carries a payment URI, any payment system reachable through a registered URI scheme is usable without modifying this specification.
+    Cryptocurrency networks are often better addressed through their own native schemes rather than through a <tt>payto</tt> target type because typically
+    the native scheme is the form the payer's wallet recognises (see <link url='#protocol-option'>The option Element</link>).</p>
+
+  <p>A QR code is normally generated directly from the payment URI: the client renders the URI string as a QR code without interpreting it,
+    and the payer scans it with a wallet or banking application. This works natively for cryptocurrency URI schemes. For some bank-transfer systems,
+    however, the payment application expects a different QR payload (for example, banking apps in several European countries scan a European Payments Council
+    EPC069-12 payload rather than a <tt>payto</tt> URI). In that case the service MAY additionally supply that payload in the <tt>&lt;qr/&gt;</tt>
+    child of the option, which the client likewise renders as a QR code without interpreting it. The payment URI itself remains REQUIRED,
+    so a machine-readable, scheme-identified payment instruction is always present.</p>
 </section1>
 
 <section1 topic='Accessibility Considerations' anchor='access'>
-  <p>Clients MUST NOT present a payment interface as the sole means of completing an action where an accessibility-equivalent alternative exists. Where a service also offers a &xep0158; CAPTCHA challenge, the payment option and the CAPTCHA option SHOULD be presented with equal prominence.</p>
-  <p>When rendering a payment option as a QR code, whether from the payment URI or from a <tt>&lt;qr/&gt;</tt> payload, clients SHOULD also present the underlying payment URI as selectable text so that users of screen readers or other assistive technologies can copy and use it directly.</p>
+  <p>Clients MUST NOT present a payment interface as the sole means of completing an action where an accessibility-equivalent alternative exists.
+    Where a service also offers a &xep0158; CAPTCHA challenge, the payment option and the CAPTCHA option SHOULD be presented with equal prominence.</p>
+  <p>When rendering a payment option as a QR code, whether from the payment URI or from a <tt>&lt;qr/&gt;</tt> payload,
+    clients SHOULD also present the underlying payment URI as selectable text so that users of screen readers or other assistive technologies can copy and use it directly.</p>
 </section1>
 
 <section1 topic='Internationalization Considerations' anchor='i18n'>
@@ -601,10 +621,12 @@ upperroom-c4a1f902</qr>
     <p>A service therefore MUST verify a session against parameters it knows itself, never against any property of the client's retry stanza; this is what allows verification to survive server-side stanza mutation. The session value MUST be unguessable and MUST be bound to what was purchased (e.g. the resource the invoice grants access to and the amount required) so that a session obtained for one resource or amount cannot be redeemed for another. Where the invoice was issued in response to a proactive <tt>&lt;get-invoice/&gt;</tt> request, the 'target' resource SHOULD be part of this binding.</p>
     <p>How the service achieves this is an implementation choice. It MAY store server-side state mapping the session to the invoice, or encode the binding into a self-contained keyed token, for example an HMAC over those service-side parameters (not the option URIs, which embed the session and are not echoed on retry) together with a per-invoice nonce, so that each session stays unique and can be re-verified without storing the invoice. Either way the service MUST record consumed sessions until they expire (see <link url='#security-replay'>Replay Attacks</link>): the token approach avoids storing invoice parameters but not the set of consumed sessions.</p>
   </section2>
+
   <section2 topic='Invoice Tampering' anchor='security-tampering'>
     <p>An intermediary XMPP server could modify <tt>&lt;invoice/&gt;</tt> contents in transit, redirecting payment destinations to attacker-controlled accounts. Implementations SHOULD use end-to-end encryption (e.g., &xep0384;) when the integrity of invoice contents is critical. For Lightning Network options, stateless preimage verification protects the service from granting access without payment: because the session identifier is bound to the payment hash (see <link url='#security-session-binding'>Session Binding</link>), a tampered invoice would yield a preimage that fails verification. This does not protect the payer, who may still send funds to an attacker; end-to-end encryption is required for that.</p>
     <p>For traditional bank transfer options, no equivalent cryptographic binding between the invoice and the beneficiary account exists. Users SHOULD independently verify beneficiary account details before initiating a bank transfer, particularly when communicating with a service for the first time.</p>
   </section2>
+
   <section2 topic='Amount Presentation Integrity' anchor='security-amount'>
     <p>The authoritative amount and beneficiary of a payment are those encoded in the payment URI of the chosen <tt>&lt;option/&gt;</tt>. This specification deliberately carries no separate human-readable amount field: a duplicate amount supplied alongside the URI could not be verified against it by a client that does not parse the scheme, and a preview diverging from the URI is a spoofing risk. The <tt>label</tt> and <tt>purpose</tt> attributes remain human-readable text describing the option and the reason for payment.</p>
     <p>Accordingly:</p>
@@ -616,15 +638,22 @@ upperroom-c4a1f902</qr>
     </ul>
     <p>End-to-end encryption (e.g. &xep0384;) protects the integrity of the URI in transit.</p>
   </section2>
+
   <section2 topic='Financial Safety' anchor='security-financial'>
-    <p>Clients MUST NOT automatically pay an invoice above a configurable amount threshold without explicit user confirmation. Implementations SHOULD default this threshold to zero (i.e., all payments require explicit user approval) and SHOULD allow the user to raise it. Automated agents operating within a pre-authorized budget MAY raise this threshold programmatically for their specific use case, but MUST NOT do so without the knowledge and consent of the account holder.</p>
+    <p>Clients MUST NOT automatically pay an invoice above a configurable amount threshold without explicit user confirmation.
+      Implementations SHOULD default this threshold to zero (i.e., all payments require explicit user approval) and SHOULD allow the user to raise it.
+      Automated agents operating within a pre-authorized budget MAY raise this threshold programmatically for their specific use case,
+      but MUST NOT do so without the knowledge and consent of the account holder.</p>
   </section2>
+
 </section1>
 
 <section1 topic='Privacy Considerations' anchor='privacy'>
   <p>Services MUST NOT include information in invoice metadata that would allow correlation of payments to real-world identities beyond what is required for the service function.</p>
-  <p>Lightning Network payment hashes are pseudonymous. However, a service that retains proof-of-payment preimages alongside session records can link a payment to the payer's JID. Services SHOULD minimize the identity information stored alongside consumed session records and SHOULD delete such records once the access grant has expired.</p>
-  <p>Traditional bank transfer options inherently reveal the payer's real name and account details to the payee, as this is a property of the underlying banking system. Clients SHOULD inform the user of this before initiating a bank transfer to a party the user has not previously transacted with.</p>
+  <p>Lightning Network payment hashes are pseudonymous. However, a service that retains proof-of-payment preimages alongside session records can link a payment to the payer's JID.
+    Services SHOULD minimize the identity information stored alongside consumed session records and SHOULD delete such records once the access grant has expired.</p>
+  <p>Traditional bank transfer options inherently reveal the payer's real name and account details to the payee, as this is a property of the underlying banking system.
+    Clients SHOULD inform the user of this before initiating a bank transfer to a party the user has not previously transacted with.</p>
   <p>The 'session' value SHOULD NOT encode any information about the payer's identity or behavior.</p>
 </section1>
 
@@ -646,11 +675,17 @@ upperroom-c4a1f902</qr>
       <li>urn:xmpp:payment:0#invoice-request</li>
       <li>urn:xmpp:payment:0#receipt</li>
     </ul>
-    <p>An entity that supports the error-flow portion of this protocol MUST advertise the feature 'urn:xmpp:payment:0'. An entity that additionally supports the proactive IQ-based invoice request MUST advertise 'urn:xmpp:payment:0#invoice-request'. An entity that supports emitting <tt>&lt;receipt/&gt;</tt> elements upon successful payment MUST advertise 'urn:xmpp:payment:0#receipt'.</p>
+    <p>An entity that supports the error-flow portion of this protocol MUST advertise the feature 'urn:xmpp:payment:0'.
+      An entity that additionally supports the proactive IQ-based invoice request MUST advertise 'urn:xmpp:payment:0#invoice-request'.
+      An entity that supports emitting <tt>&lt;receipt/&gt;</tt> elements upon successful payment MUST advertise 'urn:xmpp:payment:0#receipt'.</p>
   </section2>
 
   <section2 topic='Payment Schemes and Proof Types' anchor='registrar-schemes'>
-    <p>This specification deliberately does <strong>not</strong> establish an &REGISTRAR; registry of payment schemes, payment systems, or proof-of-payment formats. Curating payment systems is outside the XSF's area of expertise and is already handled by external bodies. Payment options are identified by their URI scheme via the IANA URI Schemes registry, and for the <tt>payto</tt> scheme by the payment target types maintained externally under RFC 8905. Proof types are declared per option by the issuing service and echoed by the payer (see <link url='#protocol-payment'>The payment Element</link>); the conventional values listed there are non-normative and their formats are defined by the relevant payment systems' own specifications.</p>
+    <p>This specification deliberately does <strong>not</strong> establish an &REGISTRAR; registry of payment schemes, payment systems, or proof-of-payment formats.
+      Curating payment systems is outside the XSF's area of expertise and is already handled by external bodies. Payment options are identified by their URI scheme,
+      ideally via the IANA URI Schemes registry, and for the <tt>payto</tt> scheme by the payment target types maintained externally under RFC 8905.
+      Proof types are declared per option by the issuing service and echoed by the payer (see <link url='#protocol-payment'>The payment Element</link>).
+      The conventional values listed there are non-normative and their formats are defined by the relevant payment systems' own specifications.</p>
   </section2>
 
   <section2 topic='Invoice Request Service Registry' anchor='registrar-services'>
